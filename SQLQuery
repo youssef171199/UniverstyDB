@@ -1,0 +1,115 @@
+CREATE DATABASE UniversityDB;
+GO
+
+
+-- Use the UniversityDB database
+USE UniversityDB;
+GO
+
+
+-- Create Students table
+CREATE TABLE Students (
+    StudentID INT PRIMARY KEY,
+    FirstName VARCHAR(50),
+    LastName VARCHAR(50),
+    DateOfBirth DATE,
+    Email VARCHAR(100)
+);
+GO
+
+
+-- Create Courses table
+CREATE TABLE Courses (
+    CourseID INT PRIMARY KEY,
+    CourseName VARCHAR(100),
+    Department VARCHAR(50),
+    Credits INT
+);
+GO
+
+
+-- Create Enrollments table
+CREATE TABLE Enrollments (
+    EnrollmentID INT PRIMARY KEY,
+    StudentID INT,
+    CourseID INT,
+    EnrollmentDate DATE,
+    FOREIGN KEY (StudentID) REFERENCES Students(StudentID),
+    FOREIGN KEY (CourseID) REFERENCES Courses(CourseID)
+);
+GO
+
+
+--Restore DB
+USE master;
+GO
+
+
+-- Check if the database already exists and drop it if needed
+IF EXISTS (SELECT name FROM sys.databases WHERE name = 'UniversityDB')
+BEGIN
+    ALTER DATABASE UniversityDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE UniversityDB;
+END
+GO
+
+
+-- Restore the database from the backup file
+RESTORE DATABASE UniversityDB
+FROM DISK = 'D:\SQL BACKUP\YourBackupFile.bak'
+WITH REPLACE, RECOVERY;
+GO
+
+--Insert into the tables 
+--assume the data is inserted
+
+
+--a. Count of Students by CourseID:
+SELECT CourseID, COUNT(*) AS NumberOfStudents
+FROM Enrollments
+GROUP BY CourseID;
+GO
+
+
+--b. Total Enrollment by Year:
+SELECT YEAR(EnrollmentDate) AS AcademicYear, COUNT(*) AS TotalEnrollment
+FROM Enrollments
+GROUP BY YEAR(EnrollmentDate)
+ORDER BY AcademicYear;
+GO
+
+
+--c. Average GPA by Course:
+SELECT C.CourseID, C.CourseName, AVG(S.GPA) AS AverageGPA
+FROM Courses C
+INNER JOIN Enrollments E ON C.CourseID = E.CourseID
+INNER JOIN Students S ON E.StudentID = S.StudentID
+GROUP BY C.CourseID, C.CourseName
+ORDER BY C.CourseID;
+GO
+
+
+--a. BreakDown:
+SELECT C.Department, COUNT(*) AS EnrollmentCount
+FROM Enrollments E
+JOIN Courses C ON E.CourseID = C.CourseID
+GROUP BY C.Department
+ORDER BY EnrollmentCount DESC;
+GO
+
+
+--b. Rollup by Year and Department:
+SELECT 
+    CASE
+        WHEN YEAR(EnrollmentDate) IS NULL THEN '0'
+        ELSE YEAR(EnrollmentDate)
+    END AS AcademicYear,
+    Department,
+    COUNT(*) AS EnrollmentCount
+FROM Enrollments E
+INNER JOIN Students S ON E.StudentID = S.StudentID
+INNER JOIN Courses C ON E.CourseID = C.CourseID
+GROUP BY ROLLUP((YEAR(EnrollmentDate), Department))
+ORDER BY AcademicYear, Department;
+END
+
